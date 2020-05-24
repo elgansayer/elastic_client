@@ -5,18 +5,16 @@ import 'transport.dart';
 
 class Doc {
   final String index;
-  final String type;
   final String id;
   final Map doc;
   final double score;
   final List<dynamic> sort;
 
-  Doc(this.id, this.doc, {this.index, this.type, this.score, this.sort});
+  Doc(this.id, this.doc, {this.index, this.score, this.sort});
 
   Map toMap() {
     final map = {
       '_index': index,
-      '_type': type,
       '_id': id,
       '_score': score,
       'doc': doc,
@@ -37,8 +35,16 @@ class Client {
     return rs.statusCode == 200;
   }
 
-  Future updateIndex(String index, Map<String, dynamic> content) async {
-    await _transport.send(Request('PUT', [index], bodyMap: content));
+  Future createOnIndex(
+      String index, String id, Map<String, dynamic> content) async {
+    await _transport
+        .send(Request('PUT', [index, '_create', id], bodyMap: content));
+  }
+
+  Future updateIndex(
+      String index, String id, Map<String, dynamic> content) async {
+    await _transport
+        .send(Request('PUT', [index, '_update', id], bodyMap: content));
   }
 
   Future flushIndex(String index) async {
@@ -52,29 +58,24 @@ class Client {
   }
 
   Future<bool> updateDoc(
-      String index, String type, String id, Map<String, dynamic> doc,
-      {bool merge = false}) async {
-    final pathSegments = [index, type];
+      String index, String id, Map<String, dynamic> doc) async {
+    final pathSegments = [index];
     if (id != null) pathSegments.add(id);
-    if (merge) pathSegments.add('_update');
     final rs =
         await _transport.send(Request('POST', pathSegments, bodyMap: doc));
     return rs.statusCode == 200 || rs.statusCode == 201;
   }
 
-  Future<bool> updateDocs(String index, String type, List<Doc> docs,
+  Future<bool> updateDocs(String index, List<Doc> docs,
       {int batchSize = 100}) async {
-    final pathSegments = [index, type, '_bulk']..removeWhere((v) => v == null);
+    final pathSegments = [index, '_bulk']..removeWhere((v) => v == null);
     for (var start = 0; start < docs.length;) {
       final sub = docs.skip(start).take(batchSize).toList();
       final lines = sub
           .map((doc) => [
                 {
-                  'index': {
-                    '_index': doc.index,
-                    '_type': doc.type,
-                    '_id': doc.id
-                  }..removeWhere((k, v) => v == null)
+                  'index': {'_index': doc.index, '_id': doc.id}
+                    ..removeWhere((k, v) => v == null)
                 },
                 doc.doc,
               ])
@@ -93,8 +94,8 @@ class Client {
     return true;
   }
 
-  Future<int> deleteDoc(String index, String type, String id) async {
-    final rs = await _transport.send(Request('DELETE', [index, type, id]));
+  Future<int> deleteDoc(String index, String id) async {
+    final rs = await _transport.send(Request('DELETE', [index, id]));
     return rs.statusCode == 200 ? 1 : 0;
   }
 
@@ -108,7 +109,6 @@ class Client {
 
   Future<SearchResult> search(
     String index,
-    String type,
     Map query, {
     int offset,
     int limit,
@@ -118,7 +118,7 @@ class Client {
     List<Map> sort,
     Map aggregations,
   }) async {
-    final path = [index, type, '_search'];
+    final path = [index, '_search'];
     final map = {
       '_source': source ?? fetchSource,
       'query': query,
@@ -149,7 +149,6 @@ class Client {
               map['_id'] as String,
               map['_source'] as Map,
               index: map['_index'] as String,
-              type: map['_type'] as String,
               score: map['_score'] as double,
               sort: map['sort'] as List<dynamic>,
             ))
@@ -278,7 +277,6 @@ class Aggregation {
               map['_id'] as String,
               map['_source'] as Map,
               index: map['_index'] as String,
-              type: map['_type'] as String,
               score: map['_score'] as double,
               sort: map['sort'] as List<dynamic>,
             ))
@@ -333,8 +331,19 @@ abstract class Query {
     return {'bool': map};
   }
 
+  static Map geo_distance(String field, int distance, String geohash) => {
+        // 'exists': {'field': field}
+        "geo_distance": {"distance": "${distance}km", "$field": "$geohash"}
+      };
+
   static Map exists(String field) => {
         'exists': {'field': field}
+      };
+
+  static Map range(String field, String start, String end) => {
+        'range': {
+          field: {"gte": start, "lt": end}
+        }
       };
 
   static Map term(String field, List<String> terms) => {
