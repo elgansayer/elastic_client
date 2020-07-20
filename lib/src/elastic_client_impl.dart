@@ -323,7 +323,7 @@ abstract class Query {
   static Map matchNone() => {'match_none': {}};
 
   static Map bool(
-      List<Map<dynamic, dynamic>> must,
+      {List<Map<dynamic, dynamic>> must,
       List<Map<dynamic, dynamic>> filter,
       List<Map<dynamic, dynamic>> should,
       List<Map<dynamic, dynamic>> mustNot}) {
