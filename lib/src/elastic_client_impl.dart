@@ -323,13 +323,11 @@ abstract class Query {
   static Map matchNone() => {'match_none': {}};
 
   static Map bool(
-      {List<Map<dynamic, dynamic>> must_not,
       List<Map<dynamic, dynamic>> must,
       List<Map<dynamic, dynamic>> filter,
       List<Map<dynamic, dynamic>> should,
       List<Map<dynamic, dynamic>> mustNot}) {
     final map = {};
-    if (must_not != null) map['must_not'] = must;
     if (must != null) map['must'] = must;
     if (filter != null) map['filter'] = filter;
     if (should != null) map['should'] = should;
@@ -338,7 +336,6 @@ abstract class Query {
   }
 
   static Map geo_distance(String field, int distance, String geohash) => {
-        // 'exists': {'field': field}
         "geo_distance": {"distance": "${distance}km", "$field": "$geohash"}
       };
 
