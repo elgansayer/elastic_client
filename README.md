@@ -1,7 +1,7 @@
 # Dart bindings for ElasticSearch HTTP API.
 
 Forked from isoos/elastic_client but with better Suitable for ES 7+
-Removed _doc requirements.
+Removed _type requirements.
 
 Extended support somewhat, including:
 bool
